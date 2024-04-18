@@ -1,0 +1,33 @@
+* objz
+=objz= is a Zig interface to =libojbc=, the C library implementing the Objective-C runtime. =objz= provides Zig types for =libobjc= primitives.
+
+To add this package to your project, pick a commit hash =<hash>= and run this:
+
+#+begin_src bash
+$ zig fetch --save https://github.com/ryleelyman/objz/archive/<hash>.tar.gz
+#+end_src
+
+Then in your =build.zig= you can add this:
+
+#+begin_src zig
+  const objz = b.dependency("objz", .{
+      .target = target,
+      .optimize = optimize,
+      .add_paths = false // adds macOS SDK paths; defaults to false
+  });
+
+  // For whatever you're building; in this case let's assume it's called exe.
+  exe.root_module.addImport("objz", objz.module("objz"));
+#+end_src
+
+and in your source code:
+#+begin_src zig
+  // import
+  const objz = @import("objz");
+
+  // get a class, create an object, etc.
+  const NSObject = objz.getClass("NSObject") orelse return error.Failed;
+  const object = NSObject.msgSend(*objz.Id, "alloc", .{});
+  defer object.msgSend(void, "release", .{});
+  object.msgSend(void, "init", .{});
+#+end_src

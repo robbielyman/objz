@@ -1,0 +1,17 @@
+.{
+    .name = "objz",
+    .version = "0.0.0",
+    .paths = .{
+        "src/",
+        "build.zig",
+        "build.zig.zon",
+        "README.org",
+        "LICENSE",
+    },
+    .dependencies = .{
+        .macos_sdk = .{
+            .url = "https://github.com/mitchellh/zig-build-macos-sdk/archive/ee70f27c08680307fa35ada92e6b2c36e0ff84c6.tar.gz",
+            .hash = "1220b415f529f1c04ed876c2b481e9f8119d353d4e3d4d7c8607ee302d2142e13eca",
+        },
+    },
+}

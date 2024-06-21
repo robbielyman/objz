@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) !void {
     const add_paths = b.option(bool, "add-paths", "add macos SDK paths from dependency") orelse false;
 
     const objz = b.addModule("objz", .{
-        .root_source_file = .{ .path = "src/lib.zig" },
+        .root_source_file = b.path("src/lib.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) !void {
     objz.linkFramework("Foundation", .{});
 
     const tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/lib.zig" },
+        .root_source_file = b.path("src/lib.zig"),
         .target = target,
         .optimize = optimize,
     });

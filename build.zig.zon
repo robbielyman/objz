@@ -9,10 +9,6 @@
         "LICENSE",
     },
     .dependencies = .{
-        .macos_sdk = .{
-            .url = "https://github.com/mitchellh/zig-build-macos-sdk/archive/ee70f27c08680307fa35ada92e6b2c36e0ff84c6.tar.gz",
-            .hash = "1220b415f529f1c04ed876c2b481e9f8119d353d4e3d4d7c8607ee302d2142e13eca",
-        },
         .@"zig-build-macos-sdk" = .{
             .url = "git+https://github.com/robbielyman/zig-build-macos-sdk#86d1550e6577c489d02f6947e5a8202f42f7d98e",
             .hash = "122045e58fb719b88a592bd7750ee30bb998f4c71a5597e55136846c09c1007a08df",

@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) !void {
     });
     tests.linkSystemLibrary("objc");
     tests.linkFramework("Foundation");
-    b.lazyImport(@This(), "macos_sdk").?.addPaths(tests);
+    b.lazyImport(@This(), "zig-build-macos-sdk").?.addPaths(tests);
 
     const test_step = b.step("test", "Run tests");
     const tests_run = b.addRunArtifact(tests);

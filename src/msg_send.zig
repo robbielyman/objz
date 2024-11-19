@@ -49,8 +49,8 @@ pub fn msgSendSuper(
     const Fn = MsgSendFn(Return, *objc_super, @TypeOf(args));
     const msg_send_fn = comptime msgSendPtr(Return, true);
     const msg_send_ptr: *const Fn = @ptrCast(msg_send_fn);
-    var super: c.ObjcSuper = .{
-        .self = target,
+    var super: objc_super = .{
+        .receiver = target,
         .super_class = superclass,
     };
     return @call(.auto, msg_send_ptr, .{ &super, name } ++ args);
@@ -169,7 +169,7 @@ fn MsgSendFn(
 
         // First argument is always the target and selector.
         acc[0] = .{ .type = Target, .is_generic = false, .is_noalias = false };
-        acc[1] = .{ .type = objc.Sel, .is_generic = false, .is_noalias = false };
+        acc[1] = .{ .type = *objc.Sel, .is_generic = false, .is_noalias = false };
 
         // Remaining arguments depend on the args given, in the order given
         for (argsInfo.fields, 0..) |field, i| {
@@ -197,10 +197,10 @@ fn MsgSendFn(
 test {
     const testing = std.testing;
     try testing.expectEqual(fn (
-        u8,
-        objc.Sel,
-    ) callconv(.C) u64, MsgSendFn(u64, u8, @TypeOf(.{})));
-    try testing.expectEqual(fn (u8, objc.Sel, u16, u32) callconv(.C) u64, MsgSendFn(u64, u8, @TypeOf(.{
+        u64,
+        *objc.Sel,
+    ) callconv(.C) u8, MsgSendFn(u8, u64, @TypeOf(.{})));
+    try testing.expectEqual(fn (u64, *objc.Sel, u16, u32) callconv(.C) u8, MsgSendFn(u8, u64, @TypeOf(.{
         @as(u16, 0),
         @as(u32, 0),
     })));
@@ -210,11 +210,10 @@ test "subClass" {
     const Subclass = objc.allocateClassPair(objc.getClass("NSObject").?, "subclass").?;
     defer objc.disposeClassPair(Subclass);
     const str = struct {
-        fn inner(target: objc.c.id, sel: objc.c.SEL) callconv(.C) objc.c.id {
+        fn inner(self: *objc.Id, sel: *objc.Sel) callconv(.C) *objc.Id {
             _ = sel;
-            const self = objc.Object.fromId(target);
             self.msgSendSuper(objc.getClass("NSObject").?, void, "init", .{});
-            return target;
+            return self;
         }
     };
     _ = Subclass.replaceMethod("init", str.inner);

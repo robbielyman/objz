@@ -236,7 +236,7 @@ pub fn copyClassList() ?[]*Class {
 pub const Class = opaque {
     pub const msgSend = msg_send.msgSend;
     pub const msgSendSuper = msg_send.msgSendSuper;
-    
+
     pub fn getMetaClass(cls: *Class) ?*Class {
         return c.object_getClass(@ptrCast(cls));
     }
@@ -328,10 +328,10 @@ pub const Class = opaque {
             *Sel => name,
             else => Sel.register(name),
         };
-        const fn_info = @typeInfo(imp).Fn;
+        const fn_info = @typeInfo(@TypeOf(imp)).Fn;
         std.debug.assert(fn_info.calling_convention == .C);
         const types = comptime encode(@TypeOf(imp));
-        comptime std.debug.assert(std.mem.startsWith(u8, &types, "@:"));
+        comptime std.debug.assert(std.mem.startsWith(u8, types[1..], "@:"));
         return c.class_replaceMethod(cls, sel, @ptrCast(&imp), &types);
     }
 
@@ -386,7 +386,7 @@ pub fn disposeClassPair(cls: *Class) void {
 pub const Id = opaque {
     pub const msgSend = msg_send.msgSend;
     pub const msgSendSuper = msg_send.msgSendSuper;
-    
+
     pub fn getClassName(self: *Id) ?[*:0]const u8 {
         return std.mem.sliceTo(
             c.object_getClassName(self) orelse return null,
@@ -499,4 +499,5 @@ const msg_send = @import("msg_send.zig");
 
 test {
     std.testing.refAllDecls(@This());
+    _ = msg_send;
 }

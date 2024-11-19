@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-    if (add_paths) b.lazyImport(@This(), "macos_sdk").?.addPathsModule(objz);
+    if (add_paths) b.lazyImport(@This(), "zig-build-macos-sdk").?.addPathsModule(objz);
     objz.linkSystemLibrary("objc", .{});
     objz.linkFramework("Foundation", .{});
 

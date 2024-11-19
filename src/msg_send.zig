@@ -49,8 +49,8 @@ pub fn msgSendSuper(
     const Fn = MsgSendFn(Return, *objc_super, @TypeOf(args));
     const msg_send_fn = comptime msgSendPtr(Return, true);
     const msg_send_ptr: *const Fn = @ptrCast(msg_send_fn);
-    var super: c.objc_super = .{
-        .receiver = target,
+    var super: c.ObjcSuper = .{
+        .self = target,
         .super_class = superclass,
     };
     return @call(.auto, msg_send_ptr, .{ &super, name } ++ args);
@@ -160,7 +160,7 @@ fn MsgSendFn(
 
     // Target must always be an "id". Lots of types (Class, Object, etc.)
     // are an "id" so we just make sure the sizes match for ABI reasons.
-    assert(@sizeOf(Target) == @sizeOf(c.id));
+    assert(@sizeOf(Target) == @sizeOf(*objc.Id));
 
     // Build up our argument types.
     const Fn = std.builtin.Type.Fn;
@@ -169,7 +169,7 @@ fn MsgSendFn(
 
         // First argument is always the target and selector.
         acc[0] = .{ .type = Target, .is_generic = false, .is_noalias = false };
-        acc[1] = .{ .type = c.SEL, .is_generic = false, .is_noalias = false };
+        acc[1] = .{ .type = objc.Sel, .is_generic = false, .is_noalias = false };
 
         // Remaining arguments depend on the args given, in the order given
         for (argsInfo.fields, 0..) |field, i| {

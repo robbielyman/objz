@@ -94,4 +94,9 @@ pub extern "c" fn objc_msgSend_stret() void;
 pub extern "c" fn objc_msgSendSuper_fpret() void;
 pub extern "c" fn objc_msgSend_fpret() void;
 
+pub const ObjcSuper = extern struct {
+    self: *objc.Id,
+    super_class: *objc.Class,
+};
+
 const objc = @import("lib.zig");

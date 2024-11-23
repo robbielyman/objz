@@ -34,7 +34,7 @@ pub fn Block(
     comptime Args: anytype,
     comptime Return: type,
 ) type {
-    return struct {
+    return opaque {
         const Self = @This();
         const captures_info = @typeInfo(Captures).Struct;
         const InvokeFn = FnType(anyopaque);
@@ -55,14 +55,11 @@ pub fn Block(
         /// This is the block context sent as the first paramter to the function.
         pub const Context = BlockContext(Captures, InvokeFn);
 
-        /// The context for the block invocations.
-        context: *Context,
-
         /// Create a new block. This is always created on the heap using the
         /// libc allocator because the objc runtime expects `malloc` to be
         /// used.
-        pub fn init(captures: Captures, func: *const Fn) !Self {
-            var ctx = try alloc.create(Context);
+        pub fn init(captures: Captures, func: *const Fn) !*Self {
+            const ctx = try alloc.create(Context);
             errdefer alloc.destroy(ctx);
 
             const flags: BlockFlags = .{ .stret = @typeInfo(Return) == .Struct };
@@ -74,29 +71,31 @@ pub fn Block(
                 @field(ctx, field.name) = @field(captures, field.name);
             }
 
-            return .{ .context = ctx };
+            return @ptrCast(ctx);
         }
 
         pub fn asId(self: *Self) *objc.Id {
-            return @ptrCast(self.context);
+            return @ptrCast(self);
         }
 
         pub fn deinit(self: *Self) void {
-            alloc.destroy(self.context);
-            self.* = undefined;
+            const context: *Self.Context = @ptrCast(@alignCast(self));
+            alloc.destroy(context);
         }
 
         /// Invoke the block with the given arguments. The arguments are
         /// the arguments to pass to the function beyond the captured scope.
         pub fn invoke(self: *const Self, args: anytype) Return {
-            return @call(.auto, self.context.invoke, .{self.context} ++ args);
+            const context: *const Self.Context = @ptrCast(@alignCast(self));
+            return @call(.auto, context.invoke, .{context} ++ args);
         }
 
         fn descCopyHelper(src: *anyopaque, dst: *anyopaque) callconv(.C) void {
             const real_src: *Context = @ptrCast(@alignCast(src));
             const real_dst: *Context = @ptrCast(@alignCast(dst));
             inline for (captures_info.fields) |field| {
-                if (field.type == *objc.Id) {
+                const encoding = comptime objc.encode(field.type);
+                if (comptime std.mem.eql(u8, &encoding, "@")) {
                     _Block_object_assign(
                         @field(real_dst, field.name),
                         @field(real_src, field.name),
@@ -109,7 +108,8 @@ pub fn Block(
         fn descDisposeHelper(src: *anyopaque) callconv(.C) void {
             const real_src: *Context = @ptrCast(@alignCast(src));
             inline for (captures_info.fields) |field| {
-                if (field.type == *objc.Id) {
+                const encoding = comptime objc.encode(field.type);
+                if (comptime std.mem.eql(u8, &encoding, "@")) {
                     _Block_object_dispose(@field(real_src, field.name), 3);
                 }
             }
@@ -243,7 +243,7 @@ test "Block" {
         .y = 3,
     };
 
-    var block = try AddBlock.init(captures, (struct {
+    const block = try AddBlock.init(captures, (struct {
         fn addFn(block: *const AddBlock.Context) callconv(.C) i32 {
             return block.x + block.y;
         }

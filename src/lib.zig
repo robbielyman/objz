@@ -219,7 +219,7 @@ pub fn getMetaClass(name: [:0]const u8) ?*Class {
     return c.objc_getMetaClass(name.ptr);
 }
 
-// if buf is null, returns the number of classe in the runtime
+// if buf is null, returns the number of classes in the runtime
 pub fn getClassList(buf: ?[]*Class) usize {
     const len: c_int = if (buf) |b| @intCast(b.len) else 0;
     const ptr: ?[*]*Class = if (buf) |b| b.ptr else null;
@@ -317,7 +317,7 @@ pub const Class = opaque {
         const fn_info = @typeInfo(imp).Fn;
         std.debug.assert(fn_info.calling_convention == .C);
         const types = comptime encode(@TypeOf(imp));
-        comptime std.debug.assert(std.mem.startsWith(u8, &types, "@:"));
+        comptime std.debug.assert(std.mem.startsWith(u8, &types[1..], "@:"));
         return c.class_addMethod(cls, sel, @ptrCast(&imp), &types);
     }
 
@@ -491,6 +491,31 @@ fn EncodeSize(comptime T: type) usize {
     }
 }
 
+pub fn Type(comptime name: [:0]const u8) type {
+    return opaque {
+        const Self = @This();
+
+        pub fn class() ?*Class {
+            return getClass(name);
+        }
+
+        pub fn asId(self: *Self) *Id {
+            return @ptrCast(self);
+        }
+
+        pub fn fromId(id: *Id) *Self {
+            return @ptrCast(id);
+        }
+
+        pub const msgSend = msg_send.msgSend;
+        pub const msgSendSuper = msg_send.msgSendSuper;
+
+        pub fn encoding() Encoding {
+            return .object;
+        }
+    };
+}
+
 pub const c = @import("c.zig");
 const std = @import("std");
 const Encoding = @import("encoding.zig").Encoding;
@@ -500,4 +525,11 @@ const msg_send = @import("msg_send.zig");
 test {
     std.testing.refAllDecls(@This());
     _ = msg_send;
+}
+
+test {
+    const NSObject = Type("NSObject");
+    const object = NSObject.class().?.msgSend(*NSObject, "alloc", .{});
+    object.msgSend(void, "init", .{});
+    object.msgSend(void, "release", .{});
 }

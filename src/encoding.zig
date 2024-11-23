@@ -68,7 +68,11 @@ pub const Encoding = union(enum) {
                     .union_type = T,
                     .show_type_spec = true,
                 } },
-                .Pointer => |ptr| .{ .pointer = .{ .ptr_type = T, .size = ptr.size } },
+                .Pointer => |ptr| ptr: {
+                    const child_info = @typeInfo(ptr.child);
+                    if (child_info == .Opaque and @hasDecl(ptr.child, "encoding")) break :ptr ptr.child.encoding();
+                    break :ptr .{ .pointer = .{ .ptr_type = T, .size = ptr.size } };
+                },
                 .Fn => |fn_info| .{ .function = fn_info },
                 else => @compileError("unsupported type: " ++ @typeName(T)),
             },

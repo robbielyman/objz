@@ -63,7 +63,7 @@ pub const Encoding = union(enum) {
             *objc.Id, ?*objc.Id => .object,
             else => switch (@typeInfo(T)) {
                 .Array => |arr| .{ .array = .{ .len = arr.len, .arr_type = arr.child } },
-                .Struct => .{ .structure = .{ .struct_type = T, .show_type_spec = true } },
+                .Struct => |str| if (str.backing_integer) |S| Encoding.init(S) else .{ .structure = .{ .struct_type = T, .show_type_spec = true } },
                 .Union => .{ .@"union" = .{
                     .union_type = T,
                     .show_type_spec = true,
@@ -74,6 +74,7 @@ pub const Encoding = union(enum) {
                     break :ptr .{ .pointer = .{ .ptr_type = T, .size = ptr.size } };
                 },
                 .Fn => |fn_info| .{ .function = fn_info },
+                .Enum => |enum_info| Encoding.init(enum_info.tag_type),
                 else => @compileError("unsupported type: " ++ @typeName(T)),
             },
         };

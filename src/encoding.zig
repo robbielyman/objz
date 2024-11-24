@@ -47,6 +47,7 @@ pub const Encoding = union(enum) {
             f64 => .double,
             bool => .bool,
             void, anyopaque => .void,
+            ?*anyopaque, ?*const anyopaque, *anyopaque, *const anyopaque => .{ .pointer = .{ .ptr_type = void, .size = .One } },
             [*c]u8,
             [*c]const u8,
             [*]u8,

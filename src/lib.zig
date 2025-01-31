@@ -1,7 +1,7 @@
 //! function names in this library follow
 //! the objective-C ownership naming convention:
 //! briefly "get" means you do not own the returned memory
-//! while "alloc" or "create" or "copy" does.
+//! while "alloc" or "create" or "copy" means that you do.
 
 pub const Method = opaque {
     pub fn getName(m: *Method) *Sel {
@@ -328,8 +328,8 @@ pub const Class = opaque {
             *Sel => name,
             else => Sel.register(name),
         };
-        const fn_info = @typeInfo(@TypeOf(imp)).Fn;
-        std.debug.assert(fn_info.calling_convention == .C);
+        const fn_info = @typeInfo(@TypeOf(imp)).@"fn";
+        assertCCall(fn_info.calling_convention);
         const types = comptime encode(@TypeOf(imp));
         comptime std.debug.assert(std.mem.startsWith(u8, types[1..], "@:"));
         return c.class_replaceMethod(cls, sel, @ptrCast(&imp), &types);
@@ -514,6 +514,14 @@ pub fn Type(comptime name: [:0]const u8) type {
             return .object;
         }
     };
+}
+
+fn assertCCall(conv: std.builtin.CallingConvention) void {
+    const c_call: std.builtin.CallingConvention = .c;
+    switch (conv) {
+        c_call => return,
+        else => unreachable,
+    }
 }
 
 pub const c = @import("c.zig");

@@ -72,8 +72,8 @@ fn msgSendPtr(
         // x86_64 depends on the return type...
         .x86_64 => switch (@typeInfo(Return)) {
             // Most types use objc_msgSend
-            inline .Int,
-            .Bool,
+            inline .int,
+            .bool,
             .Enum,
             .Pointer,
             .Void,
@@ -155,7 +155,7 @@ fn MsgSendFn(
     comptime Target: type,
     comptime Args: type,
 ) type {
-    const argsInfo = @typeInfo(Args).Struct;
+    const argsInfo = @typeInfo(Args).@"struct";
     assert(argsInfo.is_tuple);
 
     // Target must always be an "id". Lots of types (Class, Object, etc.)
@@ -184,8 +184,8 @@ fn MsgSendFn(
     };
 
     return @Type(.{
-        .Fn = .{
-            .calling_convention = .C,
+        .@"fn" = .{
+            .calling_convention = .c,
             .is_generic = false,
             .is_var_args = false,
             .return_type = Return,

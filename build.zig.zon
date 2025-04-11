@@ -1,6 +1,7 @@
 .{
-    .name = "objz",
-    .version = "0.0.0",
+    .name = .objz,
+    .fingerprint = 0x26903c088599cf60, // changing this has trust and security implications
+    .version = "0.1.0",
     .paths = .{
         "src/",
         "build.zig",
@@ -9,9 +10,9 @@
         "LICENSE",
     },
     .dependencies = .{
-        .@"zig-build-macos-sdk" = .{
-            .url = "git+https://github.com/robbielyman/zig-build-macos-sdk#86d1550e6577c489d02f6947e5a8202f42f7d98e",
-            .hash = "122045e58fb719b88a592bd7750ee30bb998f4c71a5597e55136846c09c1007a08df",
+        .macos_sdk = .{
+            .url = "git+https://github.com/robbielyman/zig-build-macos-sdk#6a77d04ec8e3ad30937125d93bbd1eb47bd53aae",
+            .hash = "macos_sdk-0.0.0-mYT8-y_bjAPIgrP4L5TxtQKp5vxkVT4LtrAufJ7rnnAq",
         },
     },
 }

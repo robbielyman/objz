@@ -1,3 +1,81 @@
+/// Creates the equivalent of a __block variable
+pub fn Variable(comptime Type: type) type {
+    return extern struct {
+        const Self = @This();
+
+        isa: ?*anyopaque,
+        forwarding: ?*anyopaque,
+        flags: c_int,
+        size: c_int,
+        keep: ?*const fn (dst: *anyopaque, src: *anyopaque) callconv(.C) void,
+        dispose: ?*const fn (src: *anyopaque) callconv(.C) void,
+        captured: Type,
+
+        const Encoding = @import("encoding.zig").Encoding;
+
+        pub fn encoding() Encoding {
+            return .init(Type);
+        }
+
+        pub fn access(self: Self) *Type {
+            const forwarding: *Self = @ptrCast(@alignCast(self.forwarding));
+            return &forwarding.captured;
+        }
+
+        pub fn release(self: *Self) void {
+            const flag = flag: {
+                comptime var flag: FieldIs = .fromType(Type);
+                flag.byref = true;
+                break :flag flag;
+            };
+            _Block_object_dispose(self, flag.asInt());
+        }
+
+        pub fn disposeHelper(src: *anyopaque) callconv(.C) void {
+            const real_src: *Self = @ptrCast(@alignCast(src));
+            const flag = flag: {
+                comptime var flag: FieldIs = .fromType(Type);
+                flag.byref_caller = true;
+                break :flag flag;
+            };
+            _Block_object_dispose(@ptrCast(&real_src.captured), flag.asInt());
+        }
+
+        pub fn keepHelper(dst: *anyopaque, src: *anyopaque) callconv(.C) void {
+            const real_dst: *Self = @ptrCast(@alignCast(dst));
+            const real_src: *Self = @ptrCast(@alignCast(src));
+            const flag = flag: {
+                comptime var flag: FieldIs = .fromType(Type);
+                flag.byref_caller = true;
+                break :flag flag;
+            };
+            _Block_object_assign(@ptrCast(&real_dst.captured), @ptrCast(&real_src.captured), flag.asInt());
+        }
+
+        pub const field_is: FieldIs = blk: {
+            var ret: FieldIs = .fromType(Type);
+            ret.byref = true;
+            ret.byref_caller = true;
+            break :blk ret;
+        };
+
+        pub fn init(self: *Self, value: Type) void {
+            self.forwarding = self;
+            self.captured = value;
+        }
+
+        pub const uninit: Self = .{
+            .isa = null,
+            .forwarding = undefined,
+            .flags = 0,
+            .size = @sizeOf(Self),
+            .keep = keepHelper,
+            .dispose = disposeHelper,
+            .captured = undefined,
+        };
+    };
+}
+
 /// Creates a new block type with captured (closed over) values.
 ///
 /// The CapturesArg is the a struct of captured values that will become
@@ -26,6 +104,8 @@ pub fn Block(
         const Self = @This();
         const captures_info = @typeInfo(Captures).@"struct";
         const InvokeFn = FnType(anyopaque);
+
+        pub const is_block = true;
 
         fn FnType(comptime First: type) type {
             var params: [Args.len + 1]std.builtin.Type.Fn.Param = undefined;
@@ -62,24 +142,20 @@ pub fn Block(
             const real_src: *Context = @ptrCast(@alignCast(src));
             const real_dst: *Context = @ptrCast(@alignCast(dst));
             inline for (captures_info.fields) |field| {
-                const encoding = comptime objc.encode(field.type);
-                if (comptime std.mem.eql(u8, &encoding, "@")) {
-                    _Block_object_assign(
-                        @field(real_dst, field.name),
-                        @field(real_src, field.name),
-                        3,
-                    );
-                }
+                const kind: FieldIs = .fromType(field.type);
+                _Block_object_assign(
+                    @ptrCast(&@field(real_dst, field.name)),
+                    @ptrCast(&@field(real_src, field.name)),
+                    kind.asInt(),
+                );
             }
         }
 
         fn descDisposeHelper(src: *anyopaque) callconv(.C) void {
             const real_src: *Context = @ptrCast(@alignCast(src));
             inline for (captures_info.fields) |field| {
-                const encoding = comptime objc.encode(field.type);
-                if (comptime std.mem.eql(u8, &encoding, "@")) {
-                    _Block_object_dispose(@field(real_src, field.name), 3);
-                }
+                const kind: FieldIs = .fromType(field.type);
+                _Block_object_dispose(@ptrCast(&@field(real_src, field.name)), kind.asInt());
             }
         }
 
@@ -103,8 +179,14 @@ pub fn Block(
             return @ptrCast(_Block_copy(context));
         }
 
+        const auto = @import("autorelease.zig");
+
+        pub fn retain(self: *Self) *Self {
+            return @ptrCast(auto.retainBlock(self.asId()));
+        }
+
         pub fn release(self: *Self) void {
-            self.asId().msgSend(void, "release", .{});
+            auto.release(self.asId());
         }
 
         pub fn contextCast(ctx: *const anyopaque) *const Context {
@@ -255,6 +337,7 @@ extern "c" fn _Block_object_assign(dst: *anyopaque, src: *const anyopaque, flag:
 extern "c" fn _Block_object_dispose(src: *const anyopaque, flag: c_int) void;
 
 extern "c" fn _Block_copy(block: *const anyopaque) *anyopaque;
+extern "c" fn _Block_release(block: *const anyopaque) void;
 
 const Descriptor = extern struct {
     reserved: c_ulong = 0,
@@ -262,6 +345,52 @@ const Descriptor = extern struct {
     copy_helper: *const fn (dst: *anyopaque, src: *anyopaque) callconv(.C) void,
     dispose_helper: *const fn (src: *anyopaque) callconv(.C) void,
     signature: ?[*:0]const u8,
+};
+
+pub const FieldIs = packed struct(u8) {
+    kind: enum(u3) {
+        neither = 0,
+        object = 3,
+        block = 7,
+    } = .neither,
+    byref: bool = false,
+    weak: bool = false,
+    _unused: u2 = 0,
+    byref_caller: bool = false,
+
+    pub const neither: FieldIs = .{ .kind = .neither };
+    pub const object: FieldIs = .{ .kind = .object };
+    pub const block: FieldIs = .{ .kind = .block };
+
+    pub fn fromType(comptime T: type) FieldIs {
+        const encoding = comptime objc.encode(T);
+        if (comptime std.mem.eql(u8, &encoding, "@")) return .object;
+        if (comptime std.mem.eql(u8, &encoding, "^")) return .block;
+
+        const info = @typeInfo(T);
+        switch (info) {
+            .@"struct", .@"union", .@"enum", .@"opaque" => {
+                if (@hasDecl(T, "field_is")) return T.field_is;
+                if (@hasDecl(T, "is_block") and T.is_block) return .block;
+                if (@hasDecl(T, "is_weak") and @hasDecl(T, "is_id") and T.is_weak and T.is_id) return .{
+                    .kind = .object,
+                    .weak = true,
+                };
+                if (@hasDecl(T, "is_id") and T.is_id) return .object;
+                if (@hasDecl(T, "asId")) return .object;
+
+                return .neither;
+            },
+            .pointer => |ptr| return fromType(ptr.child),
+            .optional => |opt| return fromType(opt.child),
+            else => return .neither,
+        }
+    }
+
+    pub fn asInt(self: @This()) c_int {
+        const byte: u8 = @bitCast(self);
+        return byte;
+    }
 };
 
 const BlockFlags = packed struct(c_int) {
@@ -281,7 +410,7 @@ const std = @import("std");
 const objc = @import("lib.zig");
 const assert = std.debug.assert;
 
-test "Block" {
+test Block {
     const AddBlock = Block(struct {
         x: i32 = 5,
         y: i32,
@@ -302,4 +431,35 @@ test "Block" {
 
     const ret = block.invoke(.{2});
     try std.testing.expectEqual(10, ret);
+}
+
+test Variable {
+    const V = Variable(i32);
+    var variable: V = .uninit;
+    variable.init(5);
+    defer variable.release();
+
+    const Accumulate = Block(struct {
+        x: V,
+    }, .{i32}, i32);
+
+    const context: Accumulate.Context = .{
+        .x = variable,
+        .invoke = struct {
+            fn accumulate(block_ctx: *const anyopaque, add: i32) callconv(.c) i32 {
+                const block = Accumulate.contextCast(block_ctx);
+                const ptr = block.x.access();
+                ptr.* += add;
+                return ptr.*;
+            }
+        }.accumulate,
+    };
+    const block: *Accumulate = .copyFromContext(&context);
+    defer block.release();
+
+    const ret = block.invoke(.{2});
+    try std.testing.expectEqual(7, ret);
+    try std.testing.expectEqual(7, variable.access().*);
+    variable.access().* = 99;
+    try std.testing.expectEqual(100, block.invoke(.{1}));
 }

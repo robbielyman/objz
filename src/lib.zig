@@ -384,8 +384,22 @@ pub fn disposeClassPair(cls: *Class) void {
 }
 
 pub const Id = opaque {
+    pub const is_id = true;
+
     pub const msgSend = msg_send.msgSend;
     pub const msgSendSuper = msg_send.msgSendSuper;
+
+    pub fn retain(self: *Id) *Id {
+        return auto.retain(self).?;
+    }
+
+    pub fn release(self: *Id) void {
+        auto.release(self);
+    }
+
+    pub fn autorelease(self: *Id) *Id {
+        return auto.autorelease(self).?;
+    }
 
     pub fn getClassName(self: *Id) ?[*:0]const u8 {
         return std.mem.sliceTo(
@@ -451,11 +465,11 @@ pub const Id = opaque {
 
 pub const Imp = *const fn () callconv(.C) void;
 
-/// block's invoke function should have signature
+/// `blk`'s invoke function should have signature
 /// self, method_args...
 /// in particular it does not have access to the selector
-pub fn implementationWithBlock(block: *Id) Imp {
-    return c.imp_implementationWithBlock(block);
+pub fn implementationWithBlock(blk: *Id) Imp {
+    return c.imp_implementationWithBlock(blk);
 }
 
 pub fn getBlock(imp: Imp) ?*Id {
@@ -494,6 +508,7 @@ fn EncodeSize(comptime T: type) usize {
 pub fn Type(comptime name: [:0]const u8) type {
     return opaque {
         const Self = @This();
+        pub const is_id = true;
 
         pub fn class() ?*Class {
             return getClass(name);
@@ -510,8 +525,57 @@ pub fn Type(comptime name: [:0]const u8) type {
         pub const msgSend = msg_send.msgSend;
         pub const msgSendSuper = msg_send.msgSendSuper;
 
+        pub fn retain(self: *Self) *Self {
+            return @ptrCast(self.asId().retain());
+        }
+
+        pub fn release(self: *Self) void {
+            self.asId().release();
+        }
+
+        pub fn autorelease(self: *Self) *Self {
+            return @ptrCast(self.asId().autorelease());
+        }
+
         pub fn encoding() Encoding {
             return .object;
+        }
+    };
+}
+
+pub fn Weak(comptime T: type) type {
+    if (T != Id) std.debug.assert(@hasDecl(T, "asId"));
+    return opaque {
+        const Self = @This();
+        pub const is_id = true;
+        pub const is_weak = true;
+
+        fn asIdPtr(self: *Self) *?*Id {
+            return @ptrCast(@alignCast(self));
+        }
+
+        pub fn copy(dest: *Self, src: *Self) void {
+            auto.copyWeak(dest.asIdPtr(), src.asIdPtr());
+        }
+
+        pub fn destroy(self: *Self) void {
+            auto.destroyWeak(self.asIdPtr());
+        }
+
+        pub fn init(self: *Self, value: ?*T) ?*T {
+            return auto.initWeak(self.asIdPtr(), value.asId());
+        }
+
+        pub fn load(self: *Self) ?*T {
+            return @ptrCast(auto.loadWeak(self.asIdPtr()));
+        }
+
+        pub fn loadRetained(self: *Self) ?*T {
+            return @ptrCast(auto.loadWeakRetained(self.asIdPtr()));
+        }
+
+        pub fn store(self: *Self, value: ?*T) ?*T {
+            return @ptrCast(auto.storeWeak(self.asIdPtr(), value.asId()));
         }
     };
 }
@@ -524,10 +588,13 @@ fn assertCCall(conv: std.builtin.CallingConvention) void {
     }
 }
 
+pub const auto = @import("autorelease.zig");
+pub const AutoreleasePool = auto.Pool;
 pub const c = @import("c.zig");
 const std = @import("std");
 const Encoding = @import("encoding.zig").Encoding;
-pub const Block = @import("block.zig").Block;
+pub const block = @import("block.zig");
+pub const Block = block.Block;
 const msg_send = @import("msg_send.zig");
 
 test {

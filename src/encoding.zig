@@ -64,7 +64,12 @@ pub const Encoding = union(enum) {
             *objc.Id, ?*objc.Id => .object,
             else => switch (@typeInfo(T)) {
                 .array => |arr| .{ .array = .{ .len = arr.len, .arr_type = arr.child } },
-                .@"struct" => |str| if (str.backing_integer) |S| Encoding.init(S) else .{ .structure = .{ .struct_type = T, .show_type_spec = true } },
+                .@"struct" => |str| if (str.backing_integer) |S|
+                    Encoding.init(S)
+                else if (@hasDecl(T, "encoding"))
+                    T.encoding()
+                else
+                    .{ .structure = .{ .struct_type = T, .show_type_spec = true } },
                 .@"union" => .{ .@"union" = .{
                     .union_type = T,
                     .show_type_spec = true,

@@ -11,8 +11,8 @@
     },
     .dependencies = .{
         .macos_sdk = .{
-            .url = "git+https://github.com/robbielyman/zig-build-macos-sdk#6a77d04ec8e3ad30937125d93bbd1eb47bd53aae",
-            .hash = "macos_sdk-0.0.0-mYT8-y_bjAPIgrP4L5TxtQKp5vxkVT4LtrAufJ7rnnAq",
+            .url = "git+https://github.com/robbielyman/zig-build-macos-sdk#034bd9538edf021b538b558daebc95a5ff5a3445",
+            .hash = "macos_sdk-0.0.0-mYT8-6_YjANSIU-s7T5wMQwyA8ucamYaf6HGq6VkeXpP",
         },
     },
 }

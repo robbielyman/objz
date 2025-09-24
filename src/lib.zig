@@ -463,7 +463,7 @@ pub const Id = opaque {
     }
 };
 
-pub const Imp = *const fn () callconv(.C) void;
+pub const Imp = *const fn () callconv(.c) void;
 
 /// `blk`'s invoke function should have signature
 /// self, method_args...

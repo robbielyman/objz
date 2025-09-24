@@ -355,7 +355,7 @@ test "**Union to Encoding.union encoding" {
 
 test "Fn to Encoding.function encoding" {
     const test_fn = struct {
-        fn add(_: *objc.Id, _: *objc.Sel, _: i8) callconv(.C) void {}
+        fn add(_: *objc.Id, _: *objc.Sel, _: i8) callconv(.c) void {}
     };
 
     try encodingMatchesType(@TypeOf(test_fn.add), "v@:c");

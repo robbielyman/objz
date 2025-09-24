@@ -7,8 +7,8 @@ pub fn Variable(comptime Type: type) type {
         forwarding: ?*anyopaque,
         flags: c_int,
         size: c_int,
-        keep: ?*const fn (dst: *anyopaque, src: *anyopaque) callconv(.C) void,
-        dispose: ?*const fn (src: *anyopaque) callconv(.C) void,
+        keep: ?*const fn (dst: *anyopaque, src: *anyopaque) callconv(.c) void,
+        dispose: ?*const fn (src: *anyopaque) callconv(.c) void,
         captured: Type,
 
         const Encoding = @import("encoding.zig").Encoding;
@@ -31,7 +31,7 @@ pub fn Variable(comptime Type: type) type {
             _Block_object_dispose(self, flag.asInt());
         }
 
-        pub fn disposeHelper(src: *anyopaque) callconv(.C) void {
+        pub fn disposeHelper(src: *anyopaque) callconv(.c) void {
             const real_src: *Self = @ptrCast(@alignCast(src));
             const flag = flag: {
                 comptime var flag: FieldIs = .fromType(Type);
@@ -41,7 +41,7 @@ pub fn Variable(comptime Type: type) type {
             _Block_object_dispose(@ptrCast(&real_src.captured), flag.asInt());
         }
 
-        pub fn keepHelper(dst: *anyopaque, src: *anyopaque) callconv(.C) void {
+        pub fn keepHelper(dst: *anyopaque, src: *anyopaque) callconv(.c) void {
             const real_dst: *Self = @ptrCast(@alignCast(dst));
             const real_src: *Self = @ptrCast(@alignCast(src));
             const flag = flag: {
@@ -138,7 +138,7 @@ pub fn Block(
             .signature = &objc.encode(FnType(anyopaque)),
         };
 
-        fn descCopyHelper(src: *anyopaque, dst: *anyopaque) callconv(.C) void {
+        fn descCopyHelper(src: *anyopaque, dst: *anyopaque) callconv(.c) void {
             const real_src: *Context = @ptrCast(@alignCast(src));
             const real_dst: *Context = @ptrCast(@alignCast(dst));
             inline for (captures_info.fields) |field| {
@@ -151,7 +151,7 @@ pub fn Block(
             }
         }
 
-        fn descDisposeHelper(src: *anyopaque) callconv(.C) void {
+        fn descDisposeHelper(src: *anyopaque) callconv(.c) void {
             const real_src: *Context = @ptrCast(@alignCast(src));
             inline for (captures_info.fields) |field| {
                 const kind: FieldIs = .fromType(field.type);
@@ -342,8 +342,8 @@ extern "c" fn _Block_release(block: *const anyopaque) void;
 const Descriptor = extern struct {
     reserved: c_ulong = 0,
     size: c_ulong,
-    copy_helper: *const fn (dst: *anyopaque, src: *anyopaque) callconv(.C) void,
-    dispose_helper: *const fn (src: *anyopaque) callconv(.C) void,
+    copy_helper: *const fn (dst: *anyopaque, src: *anyopaque) callconv(.c) void,
+    dispose_helper: *const fn (src: *anyopaque) callconv(.c) void,
     signature: ?[*:0]const u8,
 };
 

@@ -61,7 +61,7 @@ pub fn msgSendSuper(
 fn msgSendPtr(
     comptime Return: type,
     comptime super: bool,
-) *const fn () callconv(.C) void {
+) *const fn () callconv(.c) void {
     // See objc/message.h. The high-level is that depending on the
     // target architecture and return type, we must use a different
     // objc_msgSend function.
@@ -199,8 +199,8 @@ test {
     try testing.expectEqual(fn (
         u64,
         *objc.Sel,
-    ) callconv(.C) u8, MsgSendFn(u8, u64, @TypeOf(.{})));
-    try testing.expectEqual(fn (u64, *objc.Sel, u16, u32) callconv(.C) u8, MsgSendFn(u8, u64, @TypeOf(.{
+    ) callconv(.c) u8, MsgSendFn(u8, u64, @TypeOf(.{})));
+    try testing.expectEqual(fn (u64, *objc.Sel, u16, u32) callconv(.c) u8, MsgSendFn(u8, u64, @TypeOf(.{
         @as(u16, 0),
         @as(u32, 0),
     })));
@@ -210,7 +210,7 @@ test "subClass" {
     const Subclass = objc.allocateClassPair(objc.getClass("NSObject").?, "subclass").?;
     defer objc.disposeClassPair(Subclass);
     const str = struct {
-        fn inner(self: *objc.Id, sel: *objc.Sel) callconv(.C) *objc.Id {
+        fn inner(self: *objc.Id, sel: *objc.Sel) callconv(.c) *objc.Id {
             _ = sel;
             self.msgSendSuper(objc.getClass("NSObject").?, void, "init", .{});
             return self;

@@ -4,7 +4,7 @@
 To add this package to your project, pick a commit hash =<hash>= and run this:
 
 #+begin_src bash
-$ zig fetch --save https://github.com/ryleelyman/objz/archive/<hash>.tar.gz
+$ zig fetch --save https://github.com/robbielyman/objz/archive/<hash>.tar.gz
 #+end_src
 
 Then in your =build.zig= you can add this:

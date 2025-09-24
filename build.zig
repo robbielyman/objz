@@ -15,9 +15,11 @@ pub fn build(b: *std.Build) !void {
     objz.linkFramework("Foundation", .{});
 
     const tests = b.addTest(.{
-        .root_source_file = b.path("src/lib.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/lib.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     tests.linkSystemLibrary("objc");
     tests.linkFramework("Foundation");

@@ -487,9 +487,8 @@ pub fn encode(comptime T: type) [EncodeSize(T):0]u8 {
 
         // Build our final signature
         var buf: [EncodeSize(T) + 1]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(buf[0 .. buf.len - 1]);
-        try std.fmt.format(fbs.writer(), "{}", .{encoding});
-        buf[buf.len - 1] = 0;
+        var writer: std.io.Writer = .fixed(&buf);
+        try writer.print("{f}\x00", .{encoding});
 
         return buf[0 .. buf.len - 1 :0].*;
     }
@@ -498,10 +497,10 @@ pub fn encode(comptime T: type) [EncodeSize(T):0]u8 {
 fn EncodeSize(comptime T: type) usize {
     comptime {
         const encoding = Encoding.init(T);
+        var counting: std.Io.Writer.Discarding = .init(&.{});
         // Figure out how much space we need
-        var counting = std.io.countingWriter(std.io.null_writer);
-        try std.fmt.format(counting.writer(), "{}", .{encoding});
-        return counting.bytes_written;
+        try counting.writer.print("{f}", .{encoding});
+        return @intCast(counting.count);
     }
 }
 
